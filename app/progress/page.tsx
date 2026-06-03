@@ -24,8 +24,11 @@ export default function ProgressPage() {
             ความคืบหน้าการฝึกคำศัพท์
           </h1>
           <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">
-            ความคืบหน้านี้เก็บใน localStorage ของเครื่องนี้เท่านั้น
-            ยังไม่มีบัญชีผู้ใช้หรือฐานข้อมูล
+            {process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ? (
+              "ความคืบหน้าจะซิงก์กับบัญชีผู้ใช้เมื่อคุณเข้าสู่ระบบ (ไม่รวมระหว่างผู้ใช้)"
+            ) : (
+              "ตอนนี้บันทึกบนเครื่องนี้เท่านั้น — เข้าสู่ระบบเพื่อซิงก์ข้ามอุปกรณ์"
+            )}
           </p>
         </div>
       </section>

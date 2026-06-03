@@ -65,6 +65,72 @@ function getValue(
   return (row[index] ?? "").trim();
 }
 
+// Category normalization helpers
+const VALID_TCATS = new Set<string>([
+  "N",
+  "V",
+  "ADJ",
+  "ADV",
+  "AUX",
+  "CLAS",
+  "CONJ",
+  "DET",
+  "END",
+  "INT",
+  "NEG",
+  "PREP",
+  "PRON",
+  "QUES",
+]);
+
+function containsThaiCharacters(value: string) {
+  return /[\u0E00-\u0E7F]/.test(value);
+}
+
+export function normalizeTcat(value: string | null | undefined): string | null {
+  if (!value) return null;
+  let v = String(value).trim().toUpperCase();
+  if (!v) return null;
+
+  // Quickly reject anything containing Thai script or unusual punctuation
+  if (containsThaiCharacters(v)) return null;
+
+  // Normalize common separators and punctuation to spaces
+  v = v.replace(/[^A-Z0-9\s/\-]/g, " ").replace(/[\s/\-]+/g, " ").trim();
+
+  // Map obvious typos
+  if (v === "AVD") v = "ADV";
+
+  // If value contains multiple tokens, pick the first token that matches VALID_TCATS
+  const tokens = v.split(" ").filter(Boolean);
+  for (const t of tokens) {
+    if (VALID_TCATS.has(t)) return t;
+  }
+
+  // If whole normalized value matches, accept it
+  if (VALID_TCATS.has(v)) return v;
+
+  return null;
+}
+
+export function isValidTcat(value: string | null | undefined): boolean {
+  return Boolean(normalizeTcat(value));
+}
+
+export function getCleanVocabularyCategories() {
+  if (cachedPartOfSpeechOptions) return cachedPartOfSpeechOptions;
+
+  const options = new Set<string>();
+
+  for (const entry of getAllVocabularyEntries()) {
+    const normalized = normalizeTcat(entry.partOfSpeech);
+    if (normalized) options.add(normalized);
+  }
+
+  cachedPartOfSpeechOptions = [...options].sort((a, b) => a.localeCompare(b));
+  return cachedPartOfSpeechOptions;
+}
+
 function createVocabularyEntry(
   row: string[],
   columnIndexes: Record<string, number>,
@@ -74,7 +140,7 @@ function createVocabularyEntry(
     english: getValue(row, columnIndexes, "e-entry"),
     thai: getValue(row, columnIndexes, "t-entry"),
     searchThai: getValue(row, columnIndexes, "t-search"),
-    partOfSpeech: getValue(row, columnIndexes, "t-cat"),
+    partOfSpeech: normalizeTcat(getValue(row, columnIndexes, "t-cat")) || "",
     synonymThai: getValue(row, columnIndexes, "t-syn"),
     exampleThai: getValue(row, columnIndexes, "t-sample"),
     antonymThai: getValue(row, columnIndexes, "t-ant"),
@@ -147,11 +213,9 @@ function toVocabularyPoolEntry(entry: VocabularyEntry): VocabularyPoolEntry {
 }
 
 function matchesPartOfSpeech(entry: VocabularyEntry, partOfSpeech: string) {
-  if (!partOfSpeech) {
-    return true;
-  }
-
-  return entry.partOfSpeech === partOfSpeech;
+  if (!partOfSpeech) return true;
+  const normalized = normalizeTcat(partOfSpeech) || "";
+  return entry.partOfSpeech === normalized;
 }
 
 function readVocabularyEntries(
@@ -307,21 +371,7 @@ export function getVocabularySearchResult({
 }
 
 export function getVocabularyPartOfSpeechOptions() {
-  if (cachedPartOfSpeechOptions) {
-    return cachedPartOfSpeechOptions;
-  }
-
-  const options = new Set(
-    getAllUsefulVocabularyEntries()
-      .map((entry) => entry.partOfSpeech)
-      .filter(Boolean),
-  );
-
-  cachedPartOfSpeechOptions = [...options].sort((first, second) =>
-    first.localeCompare(second),
-  );
-
-  return cachedPartOfSpeechOptions;
+  return getCleanVocabularyCategories();
 }
 
 export function getVocabularyPoolForLesson(keywords: string[], limit = 200) {
