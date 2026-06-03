@@ -235,12 +235,9 @@ function generateSession(vocabulary: VocabularyEntry[], store: ProgressStore) {
   return questions;
 }
 
-export function ReviewPracticeRunner({
-  vocabulary,
-}: {
-  vocabulary: VocabularyEntry[];
-}) {
+export function ReviewPracticeRunner() {
   const [store, setStore] = useState<ProgressStore | null>(null);
+  const [vocabulary, setVocabulary] = useState<VocabularyEntry[]>([]);
   const [questions, setQuestions] = useState<ReviewQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -293,16 +290,34 @@ export function ReviewPracticeRunner({
     const timer = window.setTimeout(() => {
       const nextStore = loadProgressStore();
       setStore(nextStore);
-      setQuestions(generateSession(vocabulary, nextStore));
-      setCurrentIndex(0);
-      setScore(0);
-      setIsComplete(false);
-      resetAnswerState();
       setHasInitialized(true);
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [vocabulary]);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(`/api/progress-words?page=1&pageSize=40`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        setVocabulary(data.entries ?? []);
+        // generate initial session once vocabulary and store are ready
+        setQuestions((prev) => {
+          if (prev.length) return prev;
+          return generateSession(data.entries ?? [], store ?? loadProgressStore());
+        });
+      })
+      .catch(() => {
+        // ignore errors; keep vocabulary empty
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [store]);
 
   async function saveAnswer(correct: boolean, answeredQuestion: ReviewQuestion) {
     if (!store) {
