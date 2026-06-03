@@ -1,14 +1,17 @@
-import { ProgressDashboard } from "@/app/components/ProgressDashboard";
+import { ProgressDashboard } from "@/app/components/ProgressDashboardClient";
 import {
-  getAllUsefulVocabularyEntries,
   getVocabularyPartOfSpeechOptions,
   getVocabularyTotalCount,
 } from "@/lib/vocabulary";
+import { getVocabularyCountsByPartOfSpeech } from "@/lib/vocabularyServer";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default function ProgressPage() {
-  const vocabulary = getAllUsefulVocabularyEntries();
-  const partOfSpeechOptions = getVocabularyPartOfSpeechOptions();
   const totalVocabularyCount = getVocabularyTotalCount();
+  const partOfSpeechOptions = getVocabularyPartOfSpeechOptions();
+  const countsByPartOfSpeech = getVocabularyCountsByPartOfSpeech();
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
@@ -29,9 +32,9 @@ export default function ProgressPage() {
 
       <section className="mx-auto w-full max-w-6xl px-6 py-10 sm:px-8">
         <ProgressDashboard
-          vocabulary={vocabulary}
           partOfSpeechOptions={partOfSpeechOptions}
           totalVocabularyCount={totalVocabularyCount}
+          countsByPartOfSpeech={countsByPartOfSpeech}
         />
       </section>
     </main>
